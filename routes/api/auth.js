@@ -4,41 +4,65 @@ const db = require("../../db");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
-router.post("/signin", (req, res) => {
+router.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  bcrypt
-    .compare(
-      password,
-      "$2b$10$mll.a63715tb2QMNL2F0iuQeaPu1ZDfJiS6vCOsjolK23oJd4oT1i"
-    )
-    .then(response => {
-      if (response == true && email === db.users[0].email) {
-        res.status(200).json(db.users[0]);
-      } else {
-        res.status(400).json({ error: "User not found or incorrect password" });
-      }
-    });
+  db.select("email", "hash")
+    .where("email", "=", email)
+    .from("login")
+    .then(data => {
+      bcrypt.compare(password, data[0].hash, (err, response) => {
+        if (response) {
+          return db
+            .select("*")
+            .from("users")
+            .where("email", "=", email)
+            .then(user => res.json(user[0]))
+            .catch(err =>
+              res.status(400).json({ error: "unable to get user" })
+            );
+        }
+        res.status(400).json({ error: "invalid credentials" });
+      });
+    })
+    .catch(err => res.status(400).json({ error: "invalid credentials" }));
 });
 
 router.post("/register", (req, res) => {
   const { name, email, password } = req.body;
-  // bcrypt.hash(password, saltRounds).then(hash => {
-  db("users")
-    .returning("*")
-    .insert({
-      email: email,
-      name: name,
-      joined: new Date()
-    })
-    .then(user => {
-      res.status(200).json(user[0]);
-    })
-    .catch(err => {
-      res.status(400).json("unable to register");
-    });
 
-  // });
+  bcrypt.hash(password, saltRounds).then(hash => {
+    db.transaction(trx => {
+      trx
+        .insert({
+          hash,
+          email
+        })
+        .into("login")
+        .returning("email")
+        .then(loginEmail => {
+          return trx("users")
+            .returning("*")
+            .insert({
+              email: loginEmail[0],
+              name,
+              joined: new Date()
+            })
+            .then(user => {
+              res.status(200).json(user[0]);
+            })
+            .catch(err => {
+              res.status(400).json(err);
+            });
+        })
+        .then(trx.commit)
+        .catch(trx.rollback);
+    }).catch(err =>
+      res
+        .status(400)
+        .json({ error: "there was an error registering your account" })
+    );
+  });
 });
 
 module.exports = router;

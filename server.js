@@ -1,19 +1,15 @@
-const express = require("express");
 require("dotenv").config();
+const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
 const db = require("./db");
-var cors = require("cors");
+const cors = require("cors");
 
-db.select("*")
-  .from("users")
-  .then(data => {
-    console.log(data);
-  });
-
+// Routes
 const auth = require("./routes/api/auth");
 const profile = require("./routes/api/profile");
 
+// Middleware
 app.use(bodyParser.json());
 app.use(cors());
 

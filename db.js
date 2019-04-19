@@ -1,6 +1,5 @@
 const knex = require("knex");
 
-console.log(process.env.DB_user);
 const postgres = knex({
   client: "pg",
   connection: {
