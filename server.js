@@ -17,7 +17,7 @@ app.use("/auth", auth);
 app.use("/profile", profile);
 
 app.get("/", (req, res) => {
-  res.status(200).json(db.users);
+  res.send("Backend is working successfully!");
 });
 
 const PORT = process.env.PORT || 4000;
